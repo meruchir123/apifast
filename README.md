@@ -2,7 +2,7 @@
 
 > **Explore. Analyze. Discover Anime.**
 
-AniVerse is a production-quality, full-stack anime analytics and discovery platform frontend built with React, TypeScript, Vite, and Tailwind CSS. It is designed for seamless integration with a FastAPI + PostgreSQL + Airflow + Kafka backend.
+AniVerse is a production-quality, full-stack anime analytics and discovery platform frontend built with React, JavaScript, Vite, and Tailwind CSS. It is designed for seamless integration with a FastAPI + PostgreSQL + Airflow + Kafka backend.
 
 ---
 
@@ -27,7 +27,7 @@ AniVerse is a production-quality, full-stack anime analytics and discovery platf
 | Technology | Purpose |
 |---|---|
 | React 19 | UI framework |
-| TypeScript | Type safety |
+| JavaScript (ES6+ / JSX) | Application logic & components |
 | Vite 8 | Build tool & dev server |
 | Tailwind CSS v4 | Utility-first styling |
 | React Router v7 | Client-side routing |
@@ -41,7 +41,7 @@ AniVerse is a production-quality, full-stack anime analytics and discovery platf
 ```
 React (Vite) ──► FastAPI ──► PostgreSQL
                     ▲
-         Kafka ──► Airflow ──► Snowflake
+         Kafka ──► Airflow ──► Databricks
                     ▲
               Data Sources (Anime APIs / Datasets)
 ```
@@ -51,12 +51,12 @@ React (Vite) ──► FastAPI ──► PostgreSQL
 ```
 src/
 ├── api/            # Service layer (swap mock → FastAPI calls here)
-│   ├── client.ts       # Configurable HTTP client abstraction
-│   ├── anime.ts
-│   ├── reviews.ts
-│   ├── analytics.ts
-│   ├── recommendations.ts
-│   └── pipeline.ts
+│   ├── client.js       # Configurable HTTP client abstraction
+│   ├── anime.js
+│   ├── reviews.js
+│   ├── analytics.js
+│   ├── recommendations.js
+│   └── pipeline.js
 ├── components/     # Reusable components
 │   ├── layout/         # Sidebar, Header, MobileNav, PageContainer
 │   ├── anime/          # AnimeCard, AnimeGrid, AnimeSearch, AnimeFilters
@@ -64,10 +64,9 @@ src/
 │   ├── analytics/      # StatCard, ChartCard, GenreChart, TrendChart…
 │   ├── pipeline/       # PipelineStatus, PipelineRunsTable
 │   └── common/         # Button, Badge, Modal, Loading, EmptyState, ErrorState
-├── pages/          # Route-level page components
-├── hooks/          # useAsync, useDebounce
-├── data/           # mockData.ts — centralized mock data
-├── types/          # TypeScript interfaces
+├── pages/          # Route-level page components (.jsx)
+├── hooks/          # useAsync.js, useDebounce.js
+├── data/           # mockData.js — centralized mock data
 └── utils/
 ```
 
@@ -113,8 +112,8 @@ VITE_API_BASE_URL=http://localhost:8000
 
 Each file in `src/api/` contains functions that currently return mock data. Replace them with real API calls:
 
-```ts
-// src/api/anime.ts — before (mock)
+```js
+// src/api/anime.js — before (mock)
 export async function getAnime(params) {
   return simulateDelay(filterMockData(params));
 }
@@ -147,7 +146,7 @@ GET  /api/pipeline/runs             # DAG run history
 
 ## 📦 Mock Data
 
-All mock data lives in [`src/data/mockData.ts`](src/data/mockData.ts):
+All mock data lives in [`src/data/mockData.js`](src/data/mockData.js):
 
 - **20 anime** with full metadata (score, rank, popularity, genres, synopsis)
 - **20 community reviews** with sentiment labels
@@ -191,7 +190,7 @@ The backend will be built with:
 - **PostgreSQL** — Operational database
 - **Airflow** — ETL orchestration
 - **Kafka** — Event streaming
-- **Snowflake** — Data warehouse
+- **Databricks** — Lakehouse platform
 - **Python ML** — Content-based recommendation engine
 
 ---
