@@ -1,32 +1,80 @@
-import { simulateDelay } from './client';
-import { MOCK_ANIME } from '../data/mockData';
-// Returns recommendations for a given anime ID.
-// In production, this would call GET /api/recommendations/{id}
-// backed by a content-based or collaborative filtering ML model.
-export async function getRecommendations(animeId) {
-    await simulateDelay(null, 500);
-    const source = MOCK_ANIME.find((a) => a.id === animeId);
-    if (!source)
-        return MOCK_ANIME.slice(0, 6);
-    // Simple mock: find anime sharing at least one genre, excluding the source
-    const similar = MOCK_ANIME.filter((a) => a.id !== animeId &&
-        a.genres.some((g) => source.genres.includes(g)))
-        .sort((a, b) => b.score - a.score)
-        .slice(0, 6);
-    return similar.length >= 3 ? similar : MOCK_ANIME.filter((a) => a.id !== animeId).slice(0, 6);
-}
+
+import { apiClient } from './client';
+import { getAnime, getTopRatedAnime } from './anime';
+
+// Top-rated anime from the real analytics API.
 export async function getTopRecommendations() {
-    await simulateDelay(null, 400);
-    return [...MOCK_ANIME].sort((a, b) => b.score - a.score).slice(0, 8);
+  return getTopRatedAnime(8);
 }
+
+// Highly rated anime with lower popularity are treated as hidden gems.
+// This is a simple rule-based selection, not an ML recommendation model.
 export async function getHiddenGems() {
-    await simulateDelay(null, 400);
-    // "Hidden gems": high score but lower popularity (popularity rank > 12)
-    return MOCK_ANIME.filter((a) => a.score >= 8.5 && a.popularity > 12).slice(0, 6);
+  const response = await getAnime({
+    minScore: 8.5,
+    sortBy: 'popularity',
+    sortOrder: 'asc',
+    page: 1,
+    limit: 6,
+  });
+
+  return response.data ?? [];
 }
+
+// Find anime belonging to the selected genre.
 export async function getGenreRecommendations(genre) {
-    await simulateDelay(null, 400);
-    return MOCK_ANIME.filter((a) => a.genres.includes(genre))
-        .sort((a, b) => b.score - a.score)
-        .slice(0, 6);
+  if (!genre?.trim()) {
+    return [];
+  }
+
+  const response = await getAnime({
+    genre: genre.trim(),
+    sortBy: 'score',
+    sortOrder: 'desc',
+    page: 1,
+    limit: 6,
+  });
+
+  return response.data ?? [];
+}
+
+// Recommendations for an individual anime detail page.
+// Uses shared genres as a simple similarity rule for now.
+export async function getRecommendations(animeId) {
+  const source = await apiClient.get(`/api/anime/${animeId}`);
+  const genres = (source.genres ?? []).map((genre) =>
+    typeof genre === 'string' ? genre : genre.name
+  );
+
+  if (genres.length === 0) {
+    return [];
+  }
+
+  const results = await Promise.all(
+    genres.slice(0, 2).map((genre) =>
+      getAnime({
+        genre,
+        sortBy: 'score',
+        sortOrder: 'desc',
+        page: 1,
+        limit: 6,
+      })
+    )
+  );
+
+  const sourceId = source.id;
+
+  const uniqueAnime = new Map();
+
+  results.forEach((result) => {
+    (result.data ?? []).forEach((anime) => {
+      if (anime.id !== sourceId) {
+        uniqueAnime.set(anime.id, anime);
+      }
+    });
+  });
+
+  return [...uniqueAnime.values()]
+    .sort((a, b) => (b.score ?? 0) - (a.score ?? 0))
+    .slice(0, 6);
 }

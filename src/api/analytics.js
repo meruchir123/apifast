@@ -1,30 +1,51 @@
-import { simulateDelay } from './client';
-import { MOCK_ANALYTICS_OVERVIEW, MOCK_GENRE_ANALYTICS, MOCK_SCORE_DISTRIBUTION, MOCK_RELEASE_TREND, MOCK_REVIEW_VOLUME, MOCK_SCORE_VS_POPULARITY, MOCK_REVIEWS_OVER_TIME, } from '../data/mockData';
-export async function getAnalyticsOverview() {
-    await simulateDelay(null, 300);
-    return MOCK_ANALYTICS_OVERVIEW;
+
+import { apiClient } from './client';
+
+// Real FastAPI endpoints
+export function getAnalyticsOverview() {
+  return apiClient.get('/api/analytics/overview');
 }
-export async function getGenreAnalytics() {
-    await simulateDelay(null);
-    return MOCK_GENRE_ANALYTICS;
+
+export function getGenreAnalytics() {
+  return apiClient.get('/api/analytics/genres');
 }
-export async function getRatingAnalytics() {
-    await simulateDelay(null);
-    return MOCK_SCORE_DISTRIBUTION;
+
+export function getRatingAnalytics() {
+  return apiClient.get('/api/analytics/ratings');
 }
-export async function getReleaseTrend() {
-    await simulateDelay(null);
-    return MOCK_RELEASE_TREND;
+
+export function getReleaseTrend() {
+  return apiClient.get('/api/analytics/trends');
 }
+
+export function getFormatAnalytics() {
+  return apiClient.get('/api/analytics/formats');
+}
+
+export function getTopRatedAnime(limit = 10) {
+  return apiClient.get('/api/analytics/top-rated', { limit });
+}
+
+export function getPopularAnime(limit = 10) {
+  return apiClient.get('/api/analytics/popularity', { limit });
+}
+
+export function getGenreScores() {
+  return apiClient.get('/api/analytics/genre-scores');
+}
+
+// These two analytics are not available from the current backend yet.
+// Review data has not been ingested from AniList.
 export async function getReviewVolumeAnalytics() {
-    await simulateDelay(null);
-    return MOCK_REVIEW_VOLUME;
+  return [];
 }
-export async function getScoreVsPopularity() {
-    await simulateDelay(null);
-    return MOCK_SCORE_VS_POPULARITY;
-}
+
 export async function getReviewsOverTime() {
-    await simulateDelay(null);
-    return MOCK_REVIEWS_OVER_TIME;
+  return [];
+}
+
+// Popularity rankings are available, but a true score-vs-popularity
+// scatter plot should be built separately using both fields.
+export function getScoreVsPopularity() {
+  return apiClient.get('/api/analytics/popularity');
 }

@@ -1,93 +1,103 @@
-import { simulateDelay } from './client';
-import { MOCK_ANIME, MOCK_GENRES } from '../data/mockData';
-export async function getAnime(params) {
-    await simulateDelay(null);
-    let filtered = [...MOCK_ANIME];
-    if (params?.query) {
-        const q = params.query.toLowerCase();
-        filtered = filtered.filter((a) => a.title.toLowerCase().includes(q) ||
-            a.japaneseTitle.toLowerCase().includes(q) ||
-            a.synopsis.toLowerCase().includes(q));
-    }
-    if (params?.genre && params.genre !== 'All Genres' && params.genre !== '') {
-        filtered = filtered.filter((a) => a.genres.includes(params.genre));
-    }
-    if (params?.minScore) {
-        filtered = filtered.filter((a) => a.score >= params.minScore);
-    }
-    if (params?.maxScore) {
-        filtered = filtered.filter((a) => a.score <= params.maxScore);
-    }
-    if (params?.year) {
-        filtered = filtered.filter((a) => a.aired.from.includes(String(params.year)));
-    }
-    // Sorting
-    const sortBy = params?.sortBy ?? 'popularity';
-    const sortOrder = params?.sortOrder ?? 'asc';
-    filtered.sort((a, b) => {
-        let valA;
-        let valB;
-        switch (sortBy) {
-            case 'score':
-                valA = a.score;
-                valB = b.score;
-                break;
-            case 'popularity':
-                valA = a.popularity;
-                valB = b.popularity;
-                break;
-            case 'rank':
-                valA = a.rank;
-                valB = b.rank;
-                break;
-            case 'members':
-                valA = a.members;
-                valB = b.members;
-                break;
-            case 'title':
-                valA = a.title;
-                valB = b.title;
-                break;
-            default:
-                valA = a.popularity;
-                valB = b.popularity;
-        }
-        if (typeof valA === 'string' && typeof valB === 'string') {
-            return sortOrder === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
-        }
-        return sortOrder === 'asc'
-            ? valA - valB
-            : valB - valA;
-    });
-    const page = params?.page ?? 1;
-    const limit = params?.limit ?? 12;
-    const total = filtered.length;
-    const totalPages = Math.max(1, Math.ceil(total / limit));
-    const start = (page - 1) * limit;
-    const data = filtered.slice(start, start + limit);
-    return { data, total, page, limit, totalPages };
+
+import { apiClient } from './client';
+
+// Convert backend field names into the format used by frontend components.
+function normalizeAnime(anime) {
+  return {
+    ...anime,
+    id: anime.id,
+    sourceId: anime.source_id,
+    title:
+      anime.title_english ||
+      anime.title ||
+      anime.title_native ||
+      'Untitled',
+    japaneseTitle: anime.title_native || '',
+    synopsis: anime.synopsis || '',
+    imageUrl: anime.image_url || null,
+    bannerUrl: anime.banner_url || null,
+    score: anime.score ?? null,
+    popularity: anime.popularity ?? null,
+    members: anime.popularity ?? 0,
+    favourites: anime.favourites ?? 0,
+    episodes: anime.episodes ?? null,
+    year: anime.season_year ?? null,
+    format: anime.anime_format ?? null,
+    status: anime.status ?? null,
+    genres: Array.isArray(anime.genres)
+      ? anime.genres.map((genre) =>
+          typeof genre === 'string' ? genre : genre.name
+        )
+      : [],
+  };
 }
+
+// Fetch anime with optional search, filters, sorting, and pagination.
+export async function getAnime(params = {}) {
+  const response = await apiClient.get('/api/anime', {
+    query: params.query || undefined,
+    genre: params.genre || undefined,
+    min_score: params.minScore ?? undefined,
+    max_score: params.maxScore ?? undefined,
+    year: params.year ?? undefined,
+    sort_by: params.sortBy ?? 'popularity',
+    sort_order: params.sortOrder ?? 'desc',
+    page: params.page ?? 1,
+    limit: params.limit ?? 12,
+  });
+
+  return {
+    ...response,
+    data: (response.data ?? []).map(normalizeAnime),
+  };
+}
+
+// Fetch one anime using its internal database ID.
 export async function getAnimeById(id) {
-    await simulateDelay(null);
-    return MOCK_ANIME.find((a) => a.id === id) ?? null;
+  try {
+    const anime = await apiClient.get(`/api/anime/${id}`);
+    return normalizeAnime(anime);
+  } catch (error) {
+    if (String(error.message).includes('404')) {
+      return null;
+    }
+    throw error;
+  }
 }
+
+// Search anime by title.
 export async function searchAnime(query) {
-    await simulateDelay(null, 200);
-    if (!query.trim())
-        return [];
-    const q = query.toLowerCase();
-    return MOCK_ANIME.filter((a) => a.title.toLowerCase().includes(q) ||
-        a.japaneseTitle.toLowerCase().includes(q)).slice(0, 8);
+  if (!query?.trim()) return [];
+
+  const response = await apiClient.get('/api/anime', {
+    query: query.trim(),
+    page: 1,
+    limit: 8,
+    sort_by: 'popularity',
+    sort_order: 'desc',
+  });
+
+  return (response.data ?? []).map(normalizeAnime);
 }
+
+// Fetch available genres for filters.
 export async function getGenres() {
-    await simulateDelay(null, 100);
-    return MOCK_GENRES;
+  const genres = await apiClient.get('/api/genres');
+
+  return genres.map((genre) =>
+    typeof genre === 'string' ? genre : genre.name
+  );
 }
+
+// Keep these exports for pages that already import them.
 export async function getTopRatedAnime(limit = 5) {
-    await simulateDelay(null, 200);
-    return [...MOCK_ANIME].sort((a, b) => b.score - a.score).slice(0, limit);
+  const response = await apiClient.get('/api/analytics/top-rated', {
+    limit,
+  });
+
+  return response.map(normalizeAnime);
 }
+
 export async function getFeaturedAnime(limit = 4) {
-    await simulateDelay(null, 200);
-    return MOCK_ANIME.filter((a) => a.score >= 8.8).slice(0, limit);
+  return getTopRatedAnime(limit);
 }
